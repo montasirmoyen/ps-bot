@@ -60,7 +60,7 @@ export async function execute(interaction) {
 
   const displayName = member ? member.displayName : user.username;
 
-  let pingString = `<@${userId}> `; // <@&${SCRIM_ROLE_ID}>
+  let pingString = `<@${userId}> <@&${SCRIM_ROLE_ID}>`;
   const embed = new EmbedBuilder()
     .setColor(0x3AF3E3)
     .setTimestamp()
@@ -77,13 +77,13 @@ export async function execute(interaction) {
       ...(svCode ? [{ name: 'Code', value: svCode, inline: true }] : [])
     )
     .addFields(
-      { name: '\u200b', value: '[Join Now!](https://www.roblox.com/games/88920112778598/Pure-Soccer)', inline: false }
+      { name: '\u200b', value: '[Click here to join!](https://www.roblox.com/games/88920112778598/Pure-Soccer)\nTo stop receiving pings, remove your react here: https://discord.com/channels/1384782138725105715/1391925457074524222', inline: false }
     );
 
   if (sinfoImg) {
     embed.setImage(sinfoImg.url);
   }
-  
+
   try {
     const channel = await interaction.client.channels.fetch(SCRIM_CHANNEL_ID);
     await channel.send({ content: pingString, embeds: [embed] });
