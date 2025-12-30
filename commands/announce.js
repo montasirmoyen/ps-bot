@@ -1,46 +1,38 @@
-const {
-  SlashCommandBuilder,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
-  ActionRowBuilder,
-} = require('discord.js');
+import { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
 
 const MINIMUM_ROLE_ID = '1384791347357155439';
 
-module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('announce')
-    .setDescription('Open a modal to make a detailed announcement'),
+export const data = new SlashCommandBuilder()
+  .setName('announce')
+  .setDescription('Open a modal to make a detailed announcement');
+  
+export async function execute(interaction) {
+  const member = interaction.member;
+  const guild = interaction.guild;
 
-  async execute(interaction) {
-    const member = interaction.member;
-    const guild = interaction.guild;
-
-    const requiredRole = guild.roles.cache.get(MINIMUM_ROLE_ID);
-    if (!requiredRole) {
-      return interaction.reply({ content: '❌ Role restriction is misconfigured. Contact an admin.', ephemeral: true });
-    }
-
-    const hasPermission = member.roles.highest.comparePositionTo(requiredRole) >= 0;
-    if (!hasPermission) {
-      return interaction.reply({ content: '❌ You do not have permission to use this command.', ephemeral: true });
-    }
-
-    const modal = new ModalBuilder()
-      .setCustomId('announceModal')
-      .setTitle('New Announcement');
-
-    const messageInput = new TextInputBuilder()
-      .setCustomId('announcementInput')
-      .setLabel('Paste your full announcement')
-      .setStyle(TextInputStyle.Paragraph)
-      .setMaxLength(4000)
-      .setRequired(true);
-
-    const row = new ActionRowBuilder().addComponents(messageInput);
-    modal.addComponents(row);
-
-    await interaction.showModal(modal);
+  const requiredRole = guild.roles.cache.get(MINIMUM_ROLE_ID);
+  if (!requiredRole) {
+    return interaction.reply({ content: '❌ Role restriction is misconfigured. Contact an admin.', ephemeral: true });
   }
-};
+
+  const hasPermission = member.roles.highest.comparePositionTo(requiredRole) >= 0;
+  if (!hasPermission) {
+    return interaction.reply({ content: '❌ You do not have permission to use this command.', ephemeral: true });
+  }
+
+  const modal = new ModalBuilder()
+    .setCustomId('announceModal')
+    .setTitle('New Announcement');
+
+  const messageInput = new TextInputBuilder()
+    .setCustomId('announcementInput')
+    .setLabel('Paste your full announcement')
+    .setStyle(TextInputStyle.Paragraph)
+    .setMaxLength(4000)
+    .setRequired(true);
+
+  const row = new ActionRowBuilder().addComponents(messageInput);
+  modal.addComponents(row);
+
+  await interaction.showModal(modal);
+}
