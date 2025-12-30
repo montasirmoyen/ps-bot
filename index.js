@@ -1,49 +1,75 @@
-const {
-  Client,
-  Collection,
-  GatewayIntentBits,
-  ActivityType,
-  Events,
-  EmbedBuilder
-} = require('discord.js');
+import { Client, Collection, GatewayIntentBits, REST, Routes, ActivityType, Events, EmbedBuilder } from 'discord.js';
 
 const emojiMap = {};
 
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
+import { readdirSync } from 'fs';
+import express from 'express';
 
 const ANNOUNCE_CHANNEL_ID = '1385073502213767248';
 const MINIMUM_ROLE_ID = '1384791347357155439';
+
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+const commandFiles = readdirSync('./commands').filter(file => file.endsWith('.js'));
 const commands = [];
 
-for (const file of commandFiles) {
-  const command = require(`./commands/${file}`);
-  commands.push(command.data.toJSON());
-  client.commands.set(command.data.name, command);
-}
+const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 app.get('/', (req, res) => res.send('Bot is online!'));
 app.listen(PORT, () => console.log(`Uptime server is running on port ${PORT}`));
 
+(async () => {
+  // Load all commands first
+  for (const file of commandFiles) {
+    const command = await import(`./commands/${file}`);
+    // Handle named exports (export const data = ..., export async function execute)
+    if (command.data) {
+      commands.push(command.data.toJSON());
+      client.commands.set(command.data.name, command);
+    } else if (command.default && command.default.data) {
+      // Handle default exports (export default { data, execute })
+      commands.push(command.default.data.toJSON());
+      client.commands.set(command.default.data.name, command.default);
+    }
+  }
+
+  // Register commands after they're all loaded
+  try {
+    console.log(`Started refreshing ${commands.length} application (/) commands.`);
+    await rest.put(
+      Routes.applicationCommands(process.env.CLIENT_ID),
+      { body: commands },
+    );
+    console.log(`Successfully reloaded ${commands.length} application (/) commands.`);
+  } catch (error) {
+    console.error('Error refreshing commands:', error);
+  }
+})();
+
 client.once('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
   client.user.setPresence({
-    status: 'online',
+    status: 'dnd',
     activities: [{
       name: 'Pure Soccer',
       type: ActivityType.Playing
     }]
   });
-  console.log('Bot status set to DND with /help activity');
 });
 
 client.on(Events.InteractionCreate, async interaction => {
   try {
+    if (interaction.isChatInputCommand()) {
+      const command = client.commands.get(interaction.commandName);
+      if (!command) return;
+      await command.execute(interaction);
+    }
+
     if (interaction.isModalSubmit() && interaction.customId === 'announceModal') {
       const member = interaction.member;
       const guild = interaction.guild;
@@ -64,13 +90,13 @@ client.on(Events.InteractionCreate, async interaction => {
         .setDescription(message)
         .setTimestamp()
         .setFooter({
-          text: member.displayName,
+          text: member.displayName + " - President of Pure Sports",
           iconURL: member.displayAvatarURL({ extension: 'png', size: 64 })
         });
 
       try {
         const announceChannel = await interaction.client.channels.fetch(ANNOUNCE_CHANNEL_ID);
-        await announceChannel.send({ content: 'Official Statement', embeds: [embed] });
+        await announceChannel.send({ content: '# <:PS_LOGO_WHITE:1385067881661861978> Official Statement', embeds: [embed] });
         await interaction.reply({ content: '✅ Announcement sent!', ephemeral: true });
       } catch (error) {
         console.error('Error sending announcement:', error);
@@ -80,15 +106,10 @@ client.on(Events.InteractionCreate, async interaction => {
   } catch (err) {
     console.error('Error handling interaction:', err);
 
-    const errorMessage = {
-      content: `❌ There was an error:\n\`\`\`${err.stack || err.message}\`\`\``,
-      ephemeral: true
-    };
-
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(errorMessage);
+      await interaction.followUp('Internal error occured');
     } else {
-      await interaction.reply(errorMessage);
+      await interaction.reply('Internal error occured');
     }
   }
 });
