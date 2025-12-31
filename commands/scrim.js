@@ -36,8 +36,14 @@ export async function execute(interaction) {
   const userId = interaction.user.id;
   const member = interaction.guild.members.cache.get(userId);
 
-  if (!member.roles.cache.has(REQUIRED_ROLE_ID) || !member.roles.cache.has(STAFF_ROLE_ID)) {
-    return interaction.reply({ content: '❌ You do not have permission to use this command.', ephemeral: true });
+  if (
+    !member.roles.cache.has(REQUIRED_ROLE_ID) &&
+    !member.roles.cache.has(STAFF_ROLE_ID)
+  ) {
+    return interaction.reply({
+      content: '❌ You do not have permission to use this command.',
+      ephemeral: true
+    });
   }
 
   const now = Date.now();
